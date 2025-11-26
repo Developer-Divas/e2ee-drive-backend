@@ -10,19 +10,36 @@ def create_folder(session: Session, name: str, parent_id: Optional[int], owner_i
     session.refresh(folder)
     return FolderRead.model_validate(folder, from_attributes=True)
 
+# crud.py (add/replace list_folders)
+from sqlmodel import select
+from models import Folder
 
-
-def list_folders(session: Session, owner_id: str, parent_id: Optional[int] = None) -> List[FolderRead]:
-    q = select(Folder).where(Folder.owner_id == owner_id)
-
+def list_folders(session, user_id: str, parent_id: int | None):
+    q = select(Folder).where(Folder.owner_id == user_id)
     if parent_id is None:
-        q = q.where(Folder.parent_id == None)
+        q = q.where(Folder.parent_id.is_(None))
     else:
         q = q.where(Folder.parent_id == parent_id)
 
     rows = session.exec(q).all()
-    return [FolderRead.model_validate(r, from_attributes=True) for r in rows]
 
+    # build result with item_count (number of child folders)
+    result = []
+    for f in rows:
+        # count child folders (simple approach)
+        child_q = select(Folder).where(Folder.parent_id == f.id)
+        children = session.exec(child_q).all()
+        item_count = len(children)
+
+        result.append({
+            "id": f.id,
+            "name": f.name,
+            "owner_id": f.owner_id,
+            "parent_id": f.parent_id,
+            "item_count": item_count
+        })
+
+    return result
 
 
 def get_all_folders(session: Session, owner_id: str) -> List[FolderRead]:
