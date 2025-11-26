@@ -24,9 +24,24 @@ def on_startup():
 def create_folder(payload: schemas.FolderCreate, user_id: str = Depends(get_current_user), session: Session = Depends(get_session)):
     return crud.create_folder(session, payload.name, payload.parent_id, user_id)
 
-@app.get("/folders", response_model=list[schemas.FolderRead])
-def list_folders(parent_id: int | None = None, user_id: str = Depends(get_current_user), session: Session = Depends(get_session)):
-    return crud.list_folders(session, user_id, parent_id)
+@app.get("/folders")
+def list_folders(parent_id: int | None = None, 
+                 user_id: str = Depends(get_current_user), 
+                 session: Session = Depends(get_session)):
+    
+    # 1. Get folders inside this folder
+    folders = crud.list_folders(session, user_id, parent_id)
+
+    # 2. Build breadcrumb path
+    path = []
+    if parent_id is not None:
+        path = crud.get_parent_chain(session, parent_id)
+
+    return {
+        "folders": folders,
+        "path": path
+    }
+
 
 @app.get("/folders/all", response_model=list[schemas.FolderRead])
 def get_all_folders(user_id: str = Depends(get_current_user), session: Session = Depends(get_session)):

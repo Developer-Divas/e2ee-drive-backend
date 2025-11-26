@@ -3,7 +3,6 @@ from models import Folder
 from schemas import FolderCreate, FolderRead
 from typing import Optional, List
 
-
 def create_folder(session: Session, name: str, parent_id: Optional[int], owner_id: str) -> FolderRead:
     folder = Folder(name=name, owner_id=owner_id, parent_id=parent_id)
     session.add(folder)
@@ -31,3 +30,12 @@ def get_all_folders(session: Session, owner_id: str) -> List[FolderRead]:
     rows = session.exec(q).all()
     return [FolderRead.model_validate(r, from_attributes=True) for r in rows]
 
+def get_parent_chain(session, folder_id):
+    chain = []
+    current = session.get(Folder, folder_id)
+
+    while current:
+        chain.insert(0, { "id": current.id, "name": current.name })
+        current = session.get(Folder, current.parent_id) if current.parent_id else None
+
+    return chain
