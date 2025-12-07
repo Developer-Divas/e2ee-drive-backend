@@ -6,6 +6,9 @@ from auth import get_current_user, verify_google_token
 from fastapi.responses import JSONResponse
 import crud, schemas, os
 
+from pydantic import BaseModel
+from fastapi.responses import FileResponse
+
 app = FastAPI(title="E2EE Drive Backend")
 
 UPLOAD_DIR = "uploads"
@@ -72,3 +75,34 @@ async def upload_file(
         f.write(await file.read())
 
     return {"message": "OK", "file": file.filename, "folder_id": folder_id}
+
+@app.get("/download/{filename}")
+async def download_file(filename: str, user = Depends(verify_google_token)):
+    file_path = os.path.join("uploads", filename)
+    if not os.path.exists(file_path):
+        return {"error": "File not found"}
+    
+    return FileResponse(path=file_path, filename=filename)
+
+
+@app.delete("/delete/{filename}")
+async def delete_file(filename: str, user = Depends(verify_google_token)):
+    file_path = os.path.join("uploads", filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        return {"message": "deleted"}
+    return {"error": "File not found"}
+
+class RenameRequest(BaseModel):
+    new_name: str
+
+@app.post("/rename/{filename}")
+async def rename_file(filename: str, body: RenameRequest, user = Depends(verify_google_token)):
+    old_path = os.path.join("uploads", filename)
+    new_path = os.path.join("uploads", body.new_name)
+
+    if not os.path.exists(old_path):
+        return {"error": "File not found"}
+
+    os.rename(old_path, new_path)
+    return {"message": "renamed", "new_name": body.new_name}
