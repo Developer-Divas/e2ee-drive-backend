@@ -1,30 +1,68 @@
-# E2EE Drive - FastAPI Backend (Google ID Token auth)
+# E2EE Drive – FastAPI Backend (Google ID Token Auth)
 
-## Quick start
+Secure folder & file management backend with Google ID Token–based authentication.
 
-1. Create a virtualenv and install dependencies:
-```bash
+## 🚀 Quick Start (Windows + PowerShell)
+
+### 1️⃣ Allow PowerShell scripts (only once)
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+### 2️⃣ Create & activate virtual environment
 python -m venv .venv
-source .venv/bin/activate
+.venv\Scripts\Activate.ps1
+
+### 3️⃣ Install dependencies
 pip install -r requirements.txt
-```
 
-2. Set environment variables (recommended):
-```bash
-export GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-export DATABASE_URL=sqlite:///./e2ee_drive.db
-```
+### 4️⃣ Set required environment variables
+$env:GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
+$env:DATABASE_URL="sqlite:///./e2ee_drive.db"
 
-3. Run the app:
-```bash
+### 5️⃣ Run the FastAPI server (main.py)
 uvicorn main:app --reload --port 8000
-```
 
-4. The API endpoints:
-- `POST /folders`  - create folder (requires Authorization: Bearer <id_token>)
-- `GET /folders`   - list child folders (requires Authorization)
-- `GET /folders/all` - list all user folders (requires Authorization)
+Backend available at:
+http://localhost:8000
 
-## Notes
-- This backend verifies Google ID tokens using `google-auth` library.
-- CORS is configured to allow `http://localhost:3000` and the Authorization header.
+---
+
+## 📡 API Endpoints
+
+### 🔐 Authentication Header (Required)
+Authorization: Bearer <Google_ID_Token>
+
+### 📁 Folder Management
+POST /folders       - Create folder  
+GET  /folders       - List child folders  
+GET  /folders/all   - List all folders of user  
+
+---
+
+## 📝 Notes
+- Google ID Token verification handled using google-auth.
+- CORS allows http://localhost:3000.
+- Works seamlessly with the Next.js frontend.
+
+---
+
+## 🗂 Example Project Structure
+e2ee-drive-backend/
+│   main.py
+│   requirements.txt
+│   README.md
+│
+├── routes/
+│     folders.py
+│     auth.py
+│
+├── models/
+│     folder.py
+│     user.py
+│
+└── utils/
+      verify_google_token.py
+
+---
+
+## 🧰 Development Mode
+uvicorn main:app --reload --port 8000

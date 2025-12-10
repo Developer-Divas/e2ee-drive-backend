@@ -1,11 +1,17 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
 from database import init_db, get_session
-from auth import get_current_user
-import crud, schemas
+from auth import get_current_user, verify_google_token
+from fastapi.responses import JSONResponse
+import crud, schemas, os
+
+from pydantic import BaseModel
+from fastapi.responses import FileResponse
 
 app = FastAPI(title="E2EE Drive Backend")
+
+UPLOAD_DIR = "uploads"
 
 # CORS
 app.add_middleware(
@@ -36,9 +42,24 @@ def list_folders(parent_id: int | None = None,
     path = []
     if parent_id is not None:
         path = crud.get_parent_chain(session, parent_id)
+    
+    # 3. FIX: Safe folder path creation
+    folder_key = str(parent_id) if parent_id is not None else "root"
+    folder_path = os.path.join("uploads", folder_key)
+    os.makedirs(folder_path, exist_ok=True)
+
+    # 4. List files in this folder
+    files = []
+    for fname in os.listdir(folder_path):
+        size = os.path.getsize(os.path.join(folder_path, fname))
+        files.append({
+            "name": fname,
+            "size": size,
+        })
 
     return {
         "folders": folders,
+        "files": files,
         "path": path
     }
 
@@ -46,3 +67,64 @@ def list_folders(parent_id: int | None = None,
 @app.get("/folders/all", response_model=list[schemas.FolderRead])
 def get_all_folders(user_id: str = Depends(get_current_user), session: Session = Depends(get_session)):
     return crud.get_all_folders(session, user_id)
+
+
+@app.post("/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    folder_id: str = Form(None),
+    user = Depends(verify_google_token)   # <-- this verifies Google token
+):
+
+    folder_path = os.path.join(UPLOAD_DIR, folder_id or "root")
+    os.makedirs(folder_path, exist_ok=True)
+
+    file_location = os.path.join(folder_path, file.filename)
+
+
+    # Save file
+    with open(file_location, "wb") as f:
+        f.write(await file.read())
+
+    return {"message": "OK", "file": file.filename, "folder_id": folder_id}
+
+
+@app.get("/download/{folder_id}/{filename}")
+async def download_file(folder_id: str, filename: str, user = Depends(verify_google_token)):
+    file_path = os.path.join("uploads", folder_id or "root", filename)
+
+    if not os.path.exists(file_path):
+        return JSONResponse({"error": "File not found"}, status_code=404)
+
+    return FileResponse(
+        path=file_path,
+        filename=filename,
+        media_type="application/octet-stream"
+    )
+
+
+
+@app.delete("/delete/{folder_id}/{filename}")
+async def delete_file(folder_id: str, filename: str, user = Depends(verify_google_token)):
+    file_path = os.path.join("uploads", folder_id or "root", filename)
+
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        return {"message": "Deleted"}
+
+    return JSONResponse({"error": "File not found"}, status_code=404)
+
+
+class RenameRequest(BaseModel):
+    new_name: str
+
+@app.post("/rename/{folder_id}/{filename}")
+async def rename_file(folder_id: str, filename: str, body: RenameRequest, user = Depends(verify_google_token)):
+    old_path = os.path.join("uploads", folder_id or "root", filename)
+    new_path = os.path.join("uploads", folder_id or "root", body.new_name)
+
+    if not os.path.exists(old_path):
+        return JSONResponse({"error": "Old file not found"}, status_code=404)
+
+    os.rename(old_path, new_path)
+    return {"message": "Renamed", "new_name": body.new_name}
