@@ -27,8 +27,15 @@ def on_startup():
     init_db()
 
 @app.post("/folders", response_model=schemas.FolderRead)
-def create_folder(payload: schemas.FolderCreate, user_id: str = Depends(get_current_user), session: Session = Depends(get_session)):
-    return crud.create_folder(session, payload.name, payload.parent_id, user_id)
+def create_folder(payload: schemas.FolderCreate, 
+                  user_id: str = Depends(get_current_user), 
+                  session: Session = Depends(get_session)):
+
+    try:
+        return crud.create_folder(session, payload.name, payload.parent_id, user_id)
+    except ValueError as e:
+        return JSONResponse({"detail": str(e)}, status_code=400)
+
 
 @app.get("/folders")
 def list_folders(parent_id: int | None = None, 

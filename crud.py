@@ -3,12 +3,27 @@ from models import Folder
 from schemas import FolderCreate, FolderRead
 from typing import Optional, List
 
-def create_folder(session: Session, name: str, parent_id: Optional[int], owner_id: str) -> FolderRead:
-    folder = Folder(name=name, owner_id=owner_id, parent_id=parent_id)
+def create_folder(session: Session, name: str, parent_id: int | None, user_id: str):
+
+    # CHECK: Duplicate folder name in the same parent
+    existing = session.exec(
+        select(Folder).where(
+            Folder.owner_id == user_id,        # FIXED
+            Folder.parent_id == parent_id,
+            Folder.name == name
+        )
+    ).first()
+
+    if existing:
+        raise ValueError("Folder with this name already exists in this location.")
+
+    # Create new folder
+    folder = Folder(name=name, parent_id=parent_id, owner_id=user_id)
     session.add(folder)
     session.commit()
     session.refresh(folder)
-    return FolderRead.model_validate(folder, from_attributes=True)
+    return folder
+
 
 # crud.py (add/replace list_folders)
 from sqlmodel import select
