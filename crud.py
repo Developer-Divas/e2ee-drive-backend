@@ -71,3 +71,16 @@ def get_parent_chain(session, folder_id):
         current = session.get(Folder, current.parent_id) if current.parent_id else None
 
     return chain
+
+
+def get_folder(session: Session, folder_id: int, user_id: str):
+    return session.exec(
+        select(Folder).where(Folder.id == folder_id, Folder.owner_id == user_id)
+    ).first()
+
+
+def delete_folder(session: Session, folder_id: int, user_id: str):
+    folder = get_folder(session, folder_id, user_id)
+    if folder:
+        session.delete(folder)
+        session.commit()

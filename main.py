@@ -4,7 +4,7 @@ from sqlmodel import Session
 from database import init_db, get_session
 from auth import get_current_user, verify_google_token
 from fastapi.responses import JSONResponse
-import crud, schemas, os
+import crud, schemas, os, shutil
 
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
@@ -135,3 +135,67 @@ async def rename_file(folder_id: str, filename: str, body: RenameRequest, user =
 
     os.rename(old_path, new_path)
     return {"message": "Renamed", "new_name": body.new_name}
+
+
+@app.delete("/folder/{folder_id}")
+async def delete_folder(folder_id: int,
+                        user_id: str = Depends(get_current_user),
+                        session: Session = Depends(get_session)):
+
+    # 1. Check folder exists
+    folder = crud.get_folder(session, folder_id, user_id)
+    if not folder:
+        return JSONResponse({"detail": "Folder not found"}, status_code=404)
+
+    # 2. Delete folder record
+    crud.delete_folder(session, folder_id, user_id)
+
+    # 3. Delete folder directory
+    folder_path = os.path.join("uploads", str(folder_id))
+    if os.path.exists(folder_path):
+        import shutil
+        shutil.rmtree(folder_path)
+
+    return {"message": "Folder deleted"}
+
+
+class RenameFolderRequest(BaseModel):
+    new_name: str
+
+@app.post("/folder/{folder_id}/rename")
+async def rename_folder(folder_id: int,
+                        body: RenameFolderRequest,
+                        user_id: str = Depends(get_current_user),
+                        session: Session = Depends(get_session)):
+
+    folder = crud.get_folder(session, folder_id, user_id)
+    if not folder:
+        return JSONResponse({"detail": "Folder not found"}, status_code=404)
+
+    folder.name = body.new_name
+    session.add(folder)
+    session.commit()
+    session.refresh(folder)
+
+    return {"message": "Renamed", "new_name": body.new_name}
+
+
+@app.get("/folder/{folder_id}/download")
+async def download_folder(folder_id: int,
+                          user_id: str = Depends(get_current_user),
+                          session: Session = Depends(get_session)):
+
+    folder = crud.get_folder(session, folder_id, user_id)
+    if not folder:
+        return JSONResponse({"detail": "Folder not found"}, status_code=404)
+
+    folder_path = os.path.join("uploads", str(folder_id))
+    if not os.path.exists(folder_path):
+        return JSONResponse({"detail": "No files in this folder"}, status_code=404)
+
+    zip_path = f"temp/{folder_id}.zip"
+    os.makedirs("temp", exist_ok=True)
+
+    shutil.make_archive(f"temp/{folder_id}", "zip", folder_path)
+
+    return FileResponse(zip_path, filename=f"{folder.name}.zip")
