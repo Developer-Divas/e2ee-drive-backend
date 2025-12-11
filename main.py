@@ -31,12 +31,14 @@ app = FastAPI(title="E2EE Drive Backend")
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  
+    allow_origins=[
+        "http://localhost:3000",               # local dev
+        "https://e2ee-drive.vercel.app",       # your production frontend
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 @app.on_event("startup")
 def on_startup():
