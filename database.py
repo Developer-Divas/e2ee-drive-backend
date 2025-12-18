@@ -4,11 +4,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./e2ee_drive.db')
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {})
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./e2ee_drive.db")
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False}
+    if DATABASE_URL.startswith("sqlite")
+    else {}
+)
 
 def init_db():
-    from models import Folder
+    # IMPORTANT: import models so tables are registered
+    from models import Folder, File
     SQLModel.metadata.create_all(engine)
 
 def get_session():
