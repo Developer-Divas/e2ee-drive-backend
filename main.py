@@ -1,6 +1,8 @@
 import os
 import json
 
+from chat.router import router as chat_router
+
 from fastapi import FastAPI, Depends, UploadFile, File as FastAPIFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -25,6 +27,7 @@ BUCKET = "drive"
 
 
 app = FastAPI(title="E2EE Drive Backend")
+app.include_router(chat_router)
 
 app.add_middleware(
     CORSMiddleware,
