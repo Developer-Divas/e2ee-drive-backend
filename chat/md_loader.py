@@ -1,20 +1,33 @@
+# chat/md_loader.py
+
 import os
 
 BASE_DIR = os.path.dirname(__file__)
 KNOWLEDGE_DIR = os.path.join(BASE_DIR, "knowledge")
 
-def load_markdown_files():
-    docs = {}
+INTENT_FILE_MAP = {
+    "WRONG_PASSWORD": "password.md",
+    "DOWNLOAD_FAILED": "download.md",
+    "ENCRYPTION_FLOW": "encryption.md",
+    "RENAME_FILE": "rename.md",
+    "SECURITY_TRUST": "security.md"
+}
 
-    if not os.path.exists(KNOWLEDGE_DIR):
-        return docs
 
-    for filename in os.listdir(KNOWLEDGE_DIR):
-        if filename.endswith(".md"):
-            key = filename.replace(".md", "").lower()
-            path = os.path.join(KNOWLEDGE_DIR, filename)
+def load_markdown(intent_id: str) -> str:
+    print("intent_id : ",intent_id)
+    
+    filename = INTENT_FILE_MAP.get(intent_id)
+    print("filename : ",filename)
+    print("KNOWLEDGE_DIR : ",KNOWLEDGE_DIR)
 
-            with open(path, "r", encoding="utf-8") as f:
-                docs[key] = f.read()
+    if not filename:
+        return None
 
-    return docs
+    path = os.path.join(KNOWLEDGE_DIR, filename)
+
+    if not os.path.exists(path):
+        return None
+
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
